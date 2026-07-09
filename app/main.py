@@ -1,14 +1,17 @@
 from fastapi import FastAPI
+from app.config import settings
 
 app = FastAPI(
-    title="Alhawy AI Core",
-    version="0.1.0-alpha"
+    title=settings.APP_NAME,
+    version=settings.VERSION
 )
+
 
 @app.get("/")
 def health():
     return {
-        "name": "Alhawy AI Core",
-        "version": "0.1.0-alpha",
-        "status": "running"
+        "name": settings.APP_NAME,
+        "version": settings.VERSION,
+        "status": "running",
+        "environment": settings.ENVIRONMENT
     }
