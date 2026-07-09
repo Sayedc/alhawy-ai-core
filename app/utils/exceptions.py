@@ -1,0 +1,17 @@
+herefrom fastapi import Request
+from fastapi.responses import JSONResponse
+import logging
+
+logger = logging.getLogger("AlhawyAI")
+
+
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled Exception: {exc}")
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "message": "Internal Server Error"
+        }
+    )
