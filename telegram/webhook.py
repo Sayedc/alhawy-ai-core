@@ -9,6 +9,7 @@ telegram = TelegramClient()
 
 @router.post("/webhook")
 async def telegram_webhook(request: Request):
+    print("Webhook hit")
     update = await request.json()
 
     message = update.get("message")
