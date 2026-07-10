@@ -10,15 +10,17 @@ app = FastAPI(
     version=settings.VERSION
 )
 
+# 1. إضافة معالج الاستثناءات بعد إنشاء app مباشرة
 app.add_exception_handler(Exception, global_exception_handler)
 
 logger.info("Alhawy AI Core started successfully.")
 
+# 2. إضافة الـ Health Endpoint في آخر الملف
 @app.get("/")
 def health():
     return {
         "name": settings.APP_NAME,
         "version": settings.VERSION,
         "status": "running",
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
     }
