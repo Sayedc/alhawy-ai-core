@@ -11,18 +11,12 @@ app = FastAPI(
     version=settings.VERSION,
 )
 
-app.include_router(telegram_router)
-
-@app.on_event("startup")
-async def startup():
-    print("Webhook server started")
-
-# 1. إضافة معالج الاستثناءات بعد إنشاء app مباشرة
 app.add_exception_handler(Exception, global_exception_handler)
+
+app.include_router(telegram_router)
 
 logger.info("Alhawy AI Core started successfully.")
 
-# 2. إضافة الـ Health Endpoint في آخر الملف
 @app.get("/")
 def health():
     return {
