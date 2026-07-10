@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     BOT_TOKEN: str
     AI_API_KEY: str
+    GEMINI_API_KEY: str = ""
 
     HOST: str = "0.0.0.0"
     PORT: int = 8000
