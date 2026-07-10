@@ -1,16 +1,16 @@
-
 from fastapi import APIRouter, Request
 
+from app.providers import AIManager
 from app.telegram.client import TelegramClient
 
 router = APIRouter()
 
 telegram = TelegramClient()
+ai = AIManager()
 
 
 @router.post("/webhook")
 async def telegram_webhook(request: Request):
-    print("Webhook hit")
     update = await request.json()
 
     message = update.get("message")
@@ -21,16 +21,19 @@ async def telegram_webhook(request: Request):
     chat_id = message["chat"]["id"]
     text = message.get("text", "")
 
-    if text == "/start":
-        await telegram.send_message(
-            chat_id,
-            "🚀 Welcome to Alhawy AI Core!\n\nWalking Skeleton is running successfully."
-        )
+    try:
+        if text == "/start":
+            reply = (
+                "🚀 أهلاً بك في Alhawy AI\n\n"
+                "أنا جاهز لمساعدتك.\n"
+                "اكتب أي سؤال أو اطلب تحليل."
+            )
+        else:
+            reply = await ai.generate(text)
 
-    else:
-        await telegram.send_message(
-            chat_id,
-            f"You said:\n{text}"
-        )
+    except Exception as e:
+        reply = f"⚠️ حدث خطأ:\n{str(e)}"
+
+    await telegram.send_message(chat_id, reply)
 
     return {"ok": True}
