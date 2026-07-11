@@ -5,5 +5,5 @@ class AIManager:
     def __init__(self):
         self.provider = GeminiProvider()
 
-    async def generate(self, prompt: str) -> str:
-        return await self.provider.generate(prompt)
+    async def generate(self, user_id: int, prompt: str) -> str:
+        return await self.provider.generate(user_id, prompt)
