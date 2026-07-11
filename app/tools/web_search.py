@@ -1,41 +1,44 @@
-import httpx
+from app.tools.calculator import CalculatorTool
+from app.tools.web_search import WebSearchTool
 
-from app.tools.base import Tool
 
+class ToolRouter:
 
-class WebSearchTool(Tool):
+    def __init__(self):
+        self.tools = [
+            CalculatorTool(),
+            WebSearchTool(),
+        ]
 
-    name = "web"
+    async def run(self, prompt: str):
 
-    description = "Search the web"
+        text = prompt.lower().strip()
 
-    async def run(self, query: str):
+        # Calculator
+        allowed = "0123456789+-*/().^×÷ "
 
-        async with httpx.AsyncClient(timeout=30) as client:
+        if all(c in allowed for c in text):
+            return await self.tools[0].run(prompt)
 
-            r = await client.get(
-                "https://api.duckduckgo.com/",
-                params={
-                    "q": query,
-                    "format": "json",
-                    "no_html": 1,
-                },
-            )
+        # Web Search
+        keywords = [
+            "سعر",
+            "اخبار",
+            "خبر",
+            "bitcoin",
+            "btc",
+            "ذهب",
+            "gold",
+            "نفط",
+            "usd",
+            "eur",
+            "شركة",
+            "apple",
+            "tesla",
+            "nvidia",
+        ]
 
-            data = r.json()
+        if any(k in text for k in keywords):
+            return await self.tools[1].run(prompt)
 
-            text = data.get("AbstractText")
-
-            if text:
-                return text
-
-            related = data.get("RelatedTopics", [])
-
-            if related:
-
-                first = related[0]
-
-                if isinstance(first, dict):
-                    return first.get("Text")
-
-            return None
+        return None
