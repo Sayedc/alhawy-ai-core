@@ -8,14 +8,23 @@ def get_profile(user_id: int):
     cur = conn.cursor()
 
     cur.execute(
-        "SELECT name,favorite_market,capital,risk_level,summary FROM user_profiles WHERE user_id=?",
+        """
+        SELECT
+            name,
+            favorite_market,
+            capital,
+            risk_level,
+            summary
+        FROM user_profiles
+        WHERE user_id=?
+        """,
         (user_id,),
     )
 
     row = cur.fetchone()
     conn.close()
 
-    if not row:
+    if row is None:
         return None
 
     return {
@@ -27,7 +36,14 @@ def get_profile(user_id: int):
     }
 
 
-def save_profile(user_id: int, **kwargs):
+def save_profile(
+    user_id: int,
+    name=None,
+    favorite_market=None,
+    capital=None,
+    risk_level=None,
+    summary=None,
+):
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
 
@@ -39,11 +55,26 @@ def save_profile(user_id: int, **kwargs):
         (user_id,),
     )
 
-    for key, value in kwargs.items():
-        cur.execute(
-            f"UPDATE user_profiles SET {key}=? WHERE user_id=?",
-            (value, user_id),
-        )
+    cur.execute(
+        """
+        UPDATE user_profiles
+        SET
+            name=?,
+            favorite_market=?,
+            capital=?,
+            risk_level=?,
+            summary=?
+        WHERE user_id=?
+        """,
+        (
+            name,
+            favorite_market,
+            capital,
+            risk_level,
+            summary,
+            user_id,
+        ),
+    )
 
     conn.commit()
     conn.close()
