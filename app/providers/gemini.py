@@ -3,7 +3,8 @@ import httpx
 from app.config.settings import settings
 from app.providers.base import AIProvider
 from app.memory.memory import add_message, get_history
-from app.memory.profile import get_profile
+from app.memory.profile import get_profile, save_profile
+from app.memory.extractor import extract_profile
 
 
 class GeminiProvider(AIProvider):
@@ -16,31 +17,21 @@ class GeminiProvider(AIProvider):
             # جلب الملف الشخصي للمستخدم
             profile = get_profile(user_id)
 
-            # بناء contents من الذاكرة
-            contents = []
-
-            # إضافة الملف الشخصي كأول رسالة إذا كان موجود
+            # بناء الـ profile text
+            profile_text = ""
             if profile:
                 profile_text = f"""
 User Profile
 
-Name: {profile['name']}
-Favorite Market: {profile['favorite_market']}
-Capital: {profile['capital']}
-Risk Level: {profile['risk_level']}
-Summary: {profile['summary']}
+Name: {profile.get('name')}
+Favorite Market: {profile.get('favorite_market')}
+Capital: {profile.get('capital')}
+Risk: {profile.get('risk_level')}
+Summary: {profile.get('summary')}
 """
-                contents.insert(
-                    0,
-                    {
-                        "role": "user",
-                        "parts": [
-                            {
-                                "text": profile_text
-                            }
-                        ]
-                    }
-                )
+
+            # بناء contents من الذاكرة
+            contents = []
 
             # إضافة التاريخ من الذاكرة
             for msg in history:
@@ -74,24 +65,18 @@ Summary: {profile['summary']}
                     "system_instruction": {
                         "parts": [
                             {
-                                "text": """
+                                "text": f"""
 أنت Alhawy Trading AI.
 
-أنت مساعد ذكاء اصطناعي متخصص في:
-- التداول
-- الفوركس
-- العملات الرقمية
-- الأسهم
-- التحليل الفني
-- التحليل الأساسي
+{profile_text}
 
-تعطي إجابات احترافية ومنظمة.
+أنت متخصص في التداول والفوركس والعملات الرقمية والأسهم.
 
-إذا لم تكن متأكدًا من معلومة فقل ذلك بوضوح.
+إذا عرفت معلومات عن المستخدم فاستخدمها أثناء الحديث.
 
-لا تخترع بيانات أسعار أو أخبار.
+لا تخترع أسعارًا أو أخبارًا.
 
-إذا طُلب منك تحليل سوق، اذكر أن التحليل تعليمي وليس نصيحة استثمارية.
+أي تحليل هو لغرض تعليمي فقط.
 """
                             }
                         ]
@@ -111,5 +96,24 @@ Summary: {profile['summary']}
             # حفظ الرسائل في الذاكرة
             add_message(user_id, "user", prompt)
             add_message(user_id, "model", answer)
+
+            # استخراج وحفظ الملف الشخصي من الرسالة
+            try:
+                info = await extract_profile(prompt)
+
+                if info:
+                    current = profile or {}
+
+                    save_profile(
+                        user_id=user_id,
+                        name=info.get("name") or current.get("name"),
+                        favorite_market=info.get("favorite_market") or current.get("favorite_market"),
+                        capital=info.get("capital") or current.get("capital"),
+                        risk_level=info.get("risk_level") or current.get("risk_level"),
+                        summary=info.get("summary") or current.get("summary"),
+                    )
+
+            except Exception:
+                pass
 
             return answer
