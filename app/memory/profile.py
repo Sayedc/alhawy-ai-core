@@ -1,13 +1,8 @@
-import sqlite3
-
-DB_NAME = "alhawy.db"
+from app.database.database import conn, cursor
 
 
 def get_profile(user_id: int):
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-
-    cur.execute(
+    cursor.execute(
         """
         SELECT
             name,
@@ -21,8 +16,7 @@ def get_profile(user_id: int):
         (user_id,),
     )
 
-    row = cur.fetchone()
-    conn.close()
+    row = cursor.fetchone()
 
     if row is None:
         return None
@@ -44,18 +38,12 @@ def save_profile(
     risk_level=None,
     summary=None,
 ):
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        INSERT OR IGNORE INTO user_profiles(user_id)
-        VALUES(?)
-        """,
+    cursor.execute(
+        "INSERT OR IGNORE INTO user_profiles(user_id) VALUES(?)",
         (user_id,),
     )
 
-    cur.execute(
+    cursor.execute(
         """
         UPDATE user_profiles
         SET
@@ -77,4 +65,3 @@ def save_profile(
     )
 
     conn.commit()
-    conn.close()
