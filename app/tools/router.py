@@ -12,13 +12,13 @@ class ToolRouter:
 
         text = prompt.lower().strip()
 
+        # الآلة الحاسبة
         allowed = "0123456789+-*/().^×÷ "
 
-        # حسابي
         if all(c in allowed for c in text):
             return await calculator.run(text)
 
-        # بحث ويب
+        # البحث في الويب
         keywords = [
             "bitcoin",
             "btc",
