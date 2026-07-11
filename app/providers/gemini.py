@@ -5,11 +5,24 @@ from app.providers.base import AIProvider
 from app.memory.memory import add_message, get_history
 from app.memory.profile import get_profile, save_profile
 from app.memory.extractor import extract_profile
+from app.tools.router import ToolRouter
 
 
 class GeminiProvider(AIProvider):
 
+    def __init__(self):
+        self.tool_router = ToolRouter()
+
     async def generate(self, user_id: int, prompt: str) -> str:
+        # تشغيل الأدوات أولاً
+        tool_result = await self.tool_router.run(prompt)
+
+        if tool_result is not None:
+            # حفظ الرسالة والرد في الذاكرة
+            add_message(user_id, "user", prompt)
+            add_message(user_id, "model", tool_result)
+            return tool_result
+
         async with httpx.AsyncClient(timeout=30) as client:
             # جلب التاريخ من الذاكرة
             history = get_history(user_id)
