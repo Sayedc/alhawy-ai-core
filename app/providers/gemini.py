@@ -9,7 +9,8 @@ class GeminiProvider(AIProvider):
     async def generate(self, prompt: str) -> str:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                # ✅ تم التعديل هنا: استخدام الموديل الأحدث والأكثر توافقًا
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
                 params={"key": settings.GEMINI_API_KEY},
                 json={
                     "contents": [
