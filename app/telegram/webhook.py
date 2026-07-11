@@ -29,7 +29,8 @@ async def telegram_webhook(request: Request):
                 "اكتب أي سؤال أو اطلب تحليل."
             )
         else:
-            reply = await ai.generate(text)
+            # ✅ تمرير chat_id كـ user_id للذاكرة
+            reply = await ai.generate(chat_id, text)
 
     except Exception as e:
         reply = f"⚠️ حدث خطأ:\n{str(e)}"
