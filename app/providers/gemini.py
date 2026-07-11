@@ -2,14 +2,44 @@ import httpx
 
 from app.config.settings import settings
 from app.providers.base import AIProvider
+from app.memory.memory import add_message, get_history
 
 
 class GeminiProvider(AIProvider):
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, user_id: int, prompt: str) -> str:
         async with httpx.AsyncClient(timeout=30) as client:
+            # جلب التاريخ من الذاكرة
+            history = get_history(user_id)
+
+            # بناء contents من الذاكرة
+            contents = []
+
+            for msg in history:
+                contents.append(
+                    {
+                        "role": msg["role"],
+                        "parts": [
+                            {
+                                "text": msg["text"]
+                            }
+                        ]
+                    }
+                )
+
+            # إضافة الرسالة الحالية
+            contents.append(
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            )
+
             response = await client.post(
-                # ✅ استخدام الموديل الأحدث والأكثر توافقًا
                 "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
                 params={"key": settings.GEMINI_API_KEY},
                 json={
@@ -38,13 +68,7 @@ class GeminiProvider(AIProvider):
                             }
                         ]
                     },
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": prompt}
-                            ]
-                        }
-                    ]
+                    "contents": contents
                 },
             )
 
@@ -54,4 +78,10 @@ class GeminiProvider(AIProvider):
             response.raise_for_status()
 
             data = response.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            answer = data["candidates"][0]["content"]["parts"][0]["text"]
+
+            # حفظ الرسائل في الذاكرة
+            add_message(user_id, "user", prompt)
+            add_message(user_id, "model", answer)
+
+            return answer
