@@ -25,6 +25,10 @@ class CryptoTool(Tool):
         "بينانس": "binancecoin",
     }
 
+    def can_handle(self, query: str) -> bool:
+        text = query.lower()
+        return any(key in text for key in self.COINS)
+
     async def run(self, query: str):
 
         text = query.lower()
@@ -65,4 +69,4 @@ class CryptoTool(Tool):
             f"💰 {coin_id.upper()}\n\n"
             f"السعر الحالي: ${price:,.2f}\n"
             f"تغير 24 ساعة: {change:.2f}%"
-      )
+        )
