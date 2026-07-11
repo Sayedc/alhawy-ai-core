@@ -7,6 +7,12 @@ class CalculatorTool(Tool):
 
     description = "تنفيذ العمليات الحسابية"
 
+    def can_handle(self, query: str) -> bool:
+
+        allowed = "0123456789+-*/().^×÷ "
+
+        return all(c in allowed for c in query.strip())
+
     async def run(self, query: str):
 
         expression = (
