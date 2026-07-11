@@ -2,7 +2,7 @@ import httpx
 
 from app.config.settings import settings
 from app.providers.base import AIProvider
-from app.memory.memory import add_message, get_history
+from app.memory.memory import add_message, get_history, get_profile
 
 
 class GeminiProvider(AIProvider):
@@ -12,9 +12,35 @@ class GeminiProvider(AIProvider):
             # جلب التاريخ من الذاكرة
             history = get_history(user_id)
 
+            # جلب الملف الشخصي للمستخدم
+            profile = get_profile(user_id)
+
             # بناء contents من الذاكرة
             contents = []
 
+            # إضافة الملف الشخصي كأول رسالة إذا كان موجود
+            if profile:
+                profile_text = f"""
+User Profile:
+
+Name: {profile.get('name', 'غير محدد')}
+Capital: {profile.get('capital', 'غير محدد')}
+Favorite Market: {profile.get('favorite_market', 'غير محدد')}
+Risk Level: {profile.get('risk_level', 'غير محدد')}
+Summary: {profile.get('summary', 'غير محدد')}
+"""
+                contents.append(
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": profile_text
+                            }
+                        ]
+                    }
+                )
+
+            # إضافة التاريخ من الذاكرة
             for msg in history:
                 contents.append(
                     {
