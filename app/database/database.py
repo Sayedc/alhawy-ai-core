@@ -1,6 +1,5 @@
 import sqlite3
 
-# اتصال بقاعدة البيانات
 conn = sqlite3.connect("memory.db", check_same_thread=False)
 cursor = conn.cursor()
 
@@ -28,3 +27,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 """)
 
 conn.commit()
+
+# عرض الجداول الموجودة
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+print("TABLES:", cursor.fetchall())
