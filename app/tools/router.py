@@ -1,43 +1,22 @@
 from app.tools.calculator import CalculatorTool
-from app.tools.web_search import WebSearchTool
-
+from app.tools.crypto import CryptoTool
 
 calculator = CalculatorTool()
-web = WebSearchTool()
+crypto = CryptoTool()
 
 
 class ToolRouter:
 
     async def run(self, prompt: str):
 
-        text = prompt.lower().strip()
+        result = await calculator.run(prompt)
 
-        # الآلة الحاسبة
-        allowed = "0123456789+-*/().^×÷ "
+        if result:
+            return result
 
-        if all(c in allowed for c in text):
-            return await calculator.run(text)
+        result = await crypto.run(prompt)
 
-        # البحث في الويب
-        keywords = [
-            "bitcoin",
-            "btc",
-            "eth",
-            "gold",
-            "news",
-            "price",
-            "stock",
-            "forex",
-            "usd",
-            "eur",
-            "ذهب",
-            "بيتكوين",
-            "سعر",
-            "أخبار",
-            "الدولار",
-        ]
-
-        if any(k in text for k in keywords):
-            return await web.run(prompt)
+        if result:
+            return result
 
         return None
