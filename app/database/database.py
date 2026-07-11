@@ -1,5 +1,6 @@
 import sqlite3
 
+# اتصال بقاعدة البيانات
 conn = sqlite3.connect("memory.db", check_same_thread=False)
 cursor = conn.cursor()
 
