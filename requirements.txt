@@ -6,3 +6,4 @@ pydantic-settings>=2.2.1
 httpx
 python-telegram-bot
 openai
+yfinance
