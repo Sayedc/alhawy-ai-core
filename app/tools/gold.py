@@ -1,5 +1,4 @@
-import yfinance as yf
-
+from app.services.market_service import market_service
 from app.tools.base import Tool
 
 
@@ -28,29 +27,16 @@ class GoldTool(Tool):
         return any(keyword in text for keyword in cls.KEYWORDS)
 
     async def run(self, query: str, **kwargs) -> str:
-        try:
-            ticker = yf.Ticker("GC=F")
 
-            data = ticker.history(period="2d")
+        data = await market_service.get_gold_price()
 
-            if data.empty:
-                return None
-
-            current = float(data["Close"].iloc[-1])
-
-            previous = float(data["Close"].iloc[-2])
-
-            change = current - previous
-
-            percent = (change / previous) * 100
-
-            trend = "🟢" if change >= 0 else "🔴"
-
-            return (
-                "🥇 GOLD (XAU/USD)\n\n"
-                f"💵 السعر: ${current:,.2f}\n"
-                f"{trend} التغير: {change:+.2f} ({percent:+.2f}%)"
-            )
-
-        except Exception:
+        if data is None:
             return None
+
+        trend = "🟢" if data["change"] >= 0 else "🔴"
+
+        return (
+            f"🥇 {data['symbol']}\n\n"
+            f"💵 السعر: ${data['price']:,.2f}\n"
+            f"{trend} التغير: {data['change']:+.2f}%"
+        )
