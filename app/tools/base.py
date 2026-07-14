@@ -7,6 +7,7 @@ class Tool(ABC):
     version: str = "1.0"
     category: str
     enabled: bool = True
+    priority: int = 100
 
     def __init__(
         self,
@@ -14,13 +15,15 @@ class Tool(ABC):
         description: str,
         category: str,
         version: str = "1.0",
-        enabled: bool = True
+        enabled: bool = True,
+        priority: int = 100
     ):
         self.name = name
         self.description = description
         self.category = category
         self.version = version
         self.enabled = enabled
+        self.priority = priority
 
     @abstractmethod
     async def run(self, query: str, **kwargs) -> str:
@@ -34,8 +37,11 @@ class Tool(ABC):
     def is_available(self) -> bool:
         return self.enabled
 
-    def toggle_enabled(self):
-        self.enabled = not self.enabled
+    def enable(self):
+        self.enabled = True
+
+    def disable(self):
+        self.enabled = False
 
     def get_info(self) -> dict:
         return {
@@ -43,5 +49,7 @@ class Tool(ABC):
             "description": self.description,
             "version": self.version,
             "category": self.category,
-            "enabled": self.enabled
+            "enabled": self.enabled,
+            "priority": self.priority,
+            "type": self.__class__.__name__
         }
