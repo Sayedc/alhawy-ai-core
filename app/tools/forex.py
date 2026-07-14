@@ -5,10 +5,6 @@ from app.tools.base import Tool
 
 class ForexTool(Tool):
 
-    name = "forex"
-
-    description = "Forex exchange rates"
-
     SYMBOLS = {
         "usd": "USD",
         "دولار": "USD",
@@ -24,21 +20,31 @@ class ForexTool(Tool):
         "مصري": "EGP",
     }
 
-    def can_handle(self, query: str) -> bool:
+    def __init__(self):
+        super().__init__(
+            name="forex",
+            description="عرض أسعار صرف العملات",
+            category="Market",
+            version="1.0",
+            priority=15,
+        )
 
+    @classmethod
+    def can_handle(cls, query: str) -> bool:
         text = query.lower()
+        return any(key in text for key in cls.SYMBOLS)
 
-        return any(k in text for k in self.SYMBOLS)
-
-    async def run(self, query: str):
-
+    async def run(self, query: str, **kwargs) -> str:
         text = query.lower()
 
         found = []
 
-        for k, v in self.SYMBOLS.items():
-            if k in text and v not in found:
-                found.append(v)
+        for key, value in self.SYMBOLS.items():
+            if key in text and value not in found:
+                found.append(value)
+
+        if not found:
+            return None
 
         if len(found) == 1:
             base = found[0]
@@ -47,20 +53,32 @@ class ForexTool(Tool):
             base = found[0]
             target = found[1]
 
-        async with httpx.AsyncClient(timeout=20) as client:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
 
-            r = await client.get(
-                f"https://api.frankfurter.app/latest?from={base}&to={target}"
-            )
+                response = await client.get(
+                    "https://api.frankfurter.app/latest",
+                    params={
+                        "from": base,
+                        "to": target,
+                    },
+                )
 
-        if r.status_code != 200:
+                response.raise_for_status()
+
+        except httpx.HTTPError:
             return None
 
-        data = r.json()
+        data = response.json()
 
-        rate = data["rates"][target]
+        rates = data.get("rates", {})
+
+        if target not in rates:
+            return None
+
+        rate = rates[target]
 
         return (
             f"💱 {base}/{target}\n\n"
-            f"1 {base} = {rate} {target}"
-      )
+            f"1 {base} = {rate:,.4f} {target}"
+        )
