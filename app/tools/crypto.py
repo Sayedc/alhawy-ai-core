@@ -1,5 +1,4 @@
-import httpx
-
+from app.services.market_service import market_service
 from app.tools.base import Tool
 
 
@@ -36,6 +35,7 @@ class CryptoTool(Tool):
         return any(key in text for key in cls.COINS)
 
     async def run(self, query: str, **kwargs) -> str:
+
         text = query.lower()
 
         coin_id = None
@@ -48,40 +48,15 @@ class CryptoTool(Tool):
         if coin_id is None:
             return None
 
-        try:
-            async with httpx.AsyncClient(timeout=20) as client:
+        data = await market_service.get_crypto_price(coin_id)
 
-                response = await client.get(
-                    "https://api.coingecko.com/api/v3/simple/price",
-                    params={
-                        "ids": coin_id,
-                        "vs_currencies": "usd",
-                        "include_24hr_change": "true",
-                    },
-                )
-
-                response.raise_for_status()
-
-        except httpx.HTTPError:
+        if data is None:
             return None
 
-        data = response.json()
-
-        if coin_id not in data:
-            return None
-
-        coin = data[coin_id]
-
-        price = coin.get("usd")
-        change = coin.get("usd_24h_change", 0)
-
-        if price is None:
-            return None
-
-        trend = "🟢" if change >= 0 else "🔴"
+        trend = "🟢" if data["change"] >= 0 else "🔴"
 
         return (
-            f"🪙 {coin_id.upper()}\n\n"
-            f"💵 السعر الحالي: ${price:,.2f}\n"
-            f"{trend} تغير 24 ساعة: {change:.2f}%"
+            f"🪙 {data['symbol']}\n\n"
+            f"💵 السعر: ${data['price']:,.2f}\n"
+            f"{trend} التغير: {data['change']:.2f}%"
         )
