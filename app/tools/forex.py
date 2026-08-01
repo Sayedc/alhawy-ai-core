@@ -70,8 +70,8 @@ class ForexTool(Tool):
 
                 response.raise_for_status()
 
-        except httpx.HTTPError:
-            return "❌ تعذر الحصول على سعر الصرف حالياً."
+        except Exception as e:
+            return f"❌ {type(e).__name__}: {e}"
 
         data = response.json()
 
