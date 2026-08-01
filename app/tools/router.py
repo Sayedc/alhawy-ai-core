@@ -10,9 +10,18 @@ class ToolRouter:
         tool = self.registry.find_tool(query)
 
         if tool is None:
+            print(f"No tool found for: {query}")
             return None
 
-        return await tool.run(query)
+        print(f"Selected tool: {tool.name}")
+
+        try:
+            result = await tool.run(query)
+            print(f"Tool result: {result}")
+            return result
+        except Exception as e:
+            print(f"Tool error: {e}")
+            return None
 
 
 router = ToolRouter()
