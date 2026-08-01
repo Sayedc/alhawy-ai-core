@@ -43,6 +43,8 @@ class ForexTool(Tool):
         return False
 
     async def run(self, query: str, **kwargs) -> str:
+        print("FOREX RUN:", query)
+
         text = query.lower()
 
         found = []
@@ -51,8 +53,10 @@ class ForexTool(Tool):
             if key in text and value not in found:
                 found.append(value)
 
+        print("FOUND:", found)
+
         if not found:
-            return None
+            return "لم أتعرف على أي عملة"
 
         if len(found) == 1:
             base = found[0]
@@ -60,6 +64,8 @@ class ForexTool(Tool):
         else:
             base = found[0]
             target = found[1]
+
+        print(base, target)
 
         try:
             async with httpx.AsyncClient(timeout=20) as client:
@@ -91,4 +97,4 @@ class ForexTool(Tool):
         return (
             f"💱 {base}/{target}\n\n"
             f"1 {base} = {rate:,.4f} {target}"
-        )
+            )
