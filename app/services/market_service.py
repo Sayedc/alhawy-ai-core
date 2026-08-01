@@ -77,43 +77,32 @@ class MarketService:
         except Exception:  
             return None  
 
-    async def get_forex_rate(  
-        self,  
-        base: str,  
-        target: str,  
-    ) -> Optional[dict]:  
-        """  
-        جلب سعر صرف العملات.  
-        """  
+    async def get_forex_rate(self, base: str, target: str):
+        """
+        جلب سعر صرف العملات.
+        """
 
-        try:  
-            async with httpx.AsyncClient(timeout=20) as client:  
+        url = f"https://open.er-api.com/v6/latest/{base}"
 
-                response = await client.get(  
-                    "https://api.frankfurter.dev/v1/latest",  
-                    params={  
-                        "from": base,  
-                        "to": target,  
-                    },  
-                )  
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(url)
+            response.raise_for_status()
 
-                response.raise_for_status()  
+        data = response.json()
 
-        except httpx.HTTPError:  
-            return None  
+        if data["result"] != "success":
+            return None
 
-        data = response.json()  
+        rate = data["rates"].get(target)
 
-        rates = data.get("rates", {})  
+        if rate is None:
+            return None
 
-        if target not in rates:  
-            return None  
-
-        return {  
-            "symbol": f"{base}/{target}",  
-            "price": rates[target],  
-            "currency": target,  
-            "source": "Frankfurter",  
+        return {
+            "symbol": f"{base}/{target}",
+            "price": rate,
+            "currency": target,
+            "source": "ExchangeRate API",
         }
 
 market_service = MarketService()
