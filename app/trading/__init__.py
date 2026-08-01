@@ -1,4 +1,3 @@
-```python
 from .strategy import StrategyManager
 from .risk_manager import RiskManager
 from .trade_manager import TradeManager
