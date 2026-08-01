@@ -28,7 +28,8 @@ class TradingDB:
                 entry_price REAL,
                 exit_price REAL,
                 profit_loss REAL,
-                profit_loss_percent REAL
+                profit_loss_percent REAL,
+                user_id TEXT
             )
         """)
         
@@ -244,6 +245,136 @@ class TradingDB:
         cursor = self.conn.cursor()
         rows = cursor.execute("SELECT * FROM followers").fetchall()
         return [dict(row) for row in rows]
+    
+    # ===== دوال تنفيذ الأوامر =====
+    
+    def execute_buy_order(self, symbol: str, quantity: int, price: float, user_id: str = None) -> dict:
+        """
+        تنفيذ أمر شراء حقيقي
+        """
+        cursor = self.conn.cursor()
+        
+        # حساب القيمة الإجمالية
+        total = price * quantity
+        
+        # إضافة الصفقة
+        cursor.execute("""
+            INSERT INTO trades (symbol, action, price, quantity, total, date, status, entry_price, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (symbol.upper(), 'BUY', price, quantity, total, datetime.now().isoformat(), 'OPEN', price, user_id))
+        
+        trade_id = cursor.lastrowid
+        
+        # تحديث المحفظة
+        self._update_portfolio(symbol.upper())
+        
+        self.conn.commit()
+        
+        return {
+            "trade_id": trade_id,
+            "symbol": symbol.upper(),
+            "action": "BUY",
+            "quantity": quantity,
+            "price": price,
+            "total": total,
+            "status": "OPEN"
+        }
+    
+    def execute_sell_order(self, symbol: str, quantity: int, price: float, user_id: str = None) -> dict:
+        """
+        تنفيذ أمر بيع حقيقي
+        """
+        cursor = self.conn.cursor()
+        
+        # التحقق من وجود الكمية في المحفظة
+        portfolio = self.get_portfolio()
+        for item in portfolio:
+            if item['symbol'] == symbol.upper():
+                if item['quantity'] < quantity:
+                    return {"error": f"الكمية غير كافية. المتوفر: {item['quantity']}"}
+                break
+        else:
+            return {"error": f"لا تملك أسهم {symbol.upper()}"}
+        
+        # حساب القيمة الإجمالية
+        total = price * quantity
+        
+        # إضافة الصفقة
+        cursor.execute("""
+            INSERT INTO trades (symbol, action, price, quantity, total, date, status, entry_price, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (symbol.upper(), 'SELL', price, quantity, total, datetime.now().isoformat(), 'OPEN', price, user_id))
+        
+        trade_id = cursor.lastrowid
+        
+        # تحديث المحفظة
+        self._update_portfolio(symbol.upper())
+        
+        self.conn.commit()
+        
+        return {
+            "trade_id": trade_id,
+            "symbol": symbol.upper(),
+            "action": "SELL",
+            "quantity": quantity,
+            "price": price,
+            "total": total,
+            "status": "OPEN"
+        }
+    
+    def get_trade_history(self, user_id: str = None, limit: int = 50) -> List[Dict]:
+        """
+        جلب تاريخ الصفقات لمستخدم معين
+        """
+        cursor = self.conn.cursor()
+        
+        if user_id:
+            rows = cursor.execute("""
+                SELECT * FROM trades 
+                WHERE user_id = ? 
+                ORDER BY date DESC 
+                LIMIT ?
+            """, (user_id, limit)).fetchall()
+        else:
+            rows = cursor.execute("""
+                SELECT * FROM trades 
+                ORDER BY date DESC 
+                LIMIT ?
+            """, (limit,)).fetchall()
+        
+        return [dict(row) for row in rows]
+    
+    def calculate_pnl(self, user_id: str = None) -> dict:
+        """
+        حساب الأرباح والخسائر الحقيقية
+        """
+        trades = self.get_trade_history(user_id)
+        
+        total_buy = 0
+        total_sell = 0
+        open_positions = []
+        
+        for trade in trades:
+            if trade['action'] == 'BUY':
+                total_buy += trade['total']
+                if trade['status'] == 'OPEN':
+                    open_positions.append(trade)
+            else:
+                total_sell += trade['total']
+        
+        # حساب القيمة الحالية للصفقات المفتوحة
+        current_value = 0
+        for pos in open_positions:
+            # جلب السعر الحالي (يحتاج استدعاء API)
+            current_value += pos['quantity'] * pos['price']  # مؤقت
+        
+        return {
+            "total_invested": total_buy,
+            "total_realized": total_sell,
+            "unrealized_pnl": current_value - total_buy,
+            "realized_pnl": total_sell - total_buy,
+            "total_pnl": (total_sell + current_value) - total_buy
+        }
 
 # إنشاء كائن واحد للاستخدام
 trading_db = TradingDB()
