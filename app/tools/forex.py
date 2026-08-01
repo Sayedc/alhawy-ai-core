@@ -43,8 +43,6 @@ class ForexTool(Tool):
         return False
 
     async def run(self, query: str, **kwargs) -> str:
-        return "✅ FOREX TOOL WORKING"
-
         text = query.lower()
 
         found = []
@@ -76,6 +74,8 @@ class ForexTool(Tool):
 
                 response.raise_for_status()
 
+                print(response.text)
+
         except httpx.HTTPError:
             return None
 
@@ -91,4 +91,4 @@ class ForexTool(Tool):
         return (
             f"💱 {base}/{target}\n\n"
             f"1 {base} = {rate:,.4f} {target}"
-                 )
+        )
