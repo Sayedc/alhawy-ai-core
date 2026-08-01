@@ -1,5 +1,4 @@
-import httpx
-
+from app.services.market_service import market_service
 from app.tools.base import Tool
 
 
@@ -58,31 +57,12 @@ class ForexTool(Tool):
             base = found[0]
             target = found[1]
 
-        try:
-            async with httpx.AsyncClient(timeout=20) as client:
-                response = await client.get(
-                    "https://api.frankfurter.app/latest",
-                    params={
-                        "from": base,
-                        "to": target,
-                    },
-                )
+        data = await market_service.get_forex_rate(base, target)
 
-                response.raise_for_status()
-
-        except Exception as e:
-            return f"❌ {type(e).__name__}: {e}"
-
-        data = response.json()
-
-        rates = data.get("rates", {})
-
-        if target not in rates:
-            return "❌ لم يتم العثور على سعر العملة."
-
-        rate = rates[target]
+        if data is None:
+            return "❌ تعذر الحصول على سعر الصرف حالياً."
 
         return (
-            f"💱 {base}/{target}\n\n"
-            f"1 {base} = {rate:,.4f} {target}"
+            f"💱 {data['symbol']}\n\n"
+            f"💵 السعر: {data['price']:,.4f} {data['currency']}"
         )
