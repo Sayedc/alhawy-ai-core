@@ -1,3 +1,4 @@
+from app.services.ai_service import ai_service
 from app.telegram.client import TelegramClient
 
 telegram = TelegramClient()
@@ -16,10 +17,13 @@ async def handle_update(update: dict):
 
     text = message.get("text", "")
 
-    if not chat_id:
+    if not chat_id or not text:
         return
 
-    await telegram.send_message(
-        chat_id,
-        f"استلمت رسالتك:\n\n{text}"
-    )
+    try:
+        reply = await ai_service.chat(chat_id, text)
+
+    except Exception as e:
+        reply = f"حدث خطأ:\n{e}"
+
+    await telegram.send_message(chat_id, reply)
