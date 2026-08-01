@@ -1,3 +1,4 @@
+# app/services/market_service.py
 from typing import Optional
 
 import httpx
@@ -104,5 +105,52 @@ class MarketService:
             "currency": target,
             "source": "ExchangeRate API",
         }
+
+    async def get_stock_price(self, symbol: str) -> Optional[dict]:
+        """
+        جلب سعر سهم حقيقي من Yahoo Finance
+        """
+        try:
+            ticker = yf.Ticker(symbol)
+            
+            # جلب السعر الحالي
+            data = ticker.history(period="1d")
+            if data.empty:
+                return None
+            
+            current_price = float(data['Close'].iloc[-1])
+            
+            # جلب معلومات إضافية
+            info = ticker.info
+            
+            # حساب التغير
+            prev_close = info.get('previousClose', current_price)
+            change = ((current_price - prev_close) / prev_close) * 100
+            
+            return {
+                "symbol": symbol.upper(),
+                "price": current_price,
+                "change": change,
+                "high": float(data['High'].iloc[-1]),
+                "low": float(data['Low'].iloc[-1]),
+                "volume": int(data['Volume'].iloc[-1]),
+                "name": info.get('longName', symbol.upper()),
+                "currency": info.get('currency', 'USD'),
+                "source": "Yahoo Finance"
+            }
+        except Exception as e:
+            print(f"Error fetching {symbol}: {e}")
+            return None
+
+    async def get_multiple_stocks(self, symbols: list) -> dict:
+        """
+        جلب أسعار عدة أسهم في وقت واحد
+        """
+        results = {}
+        for symbol in symbols:
+            data = await self.get_stock_price(symbol)
+            if data:
+                results[symbol] = data
+        return results
 
 market_service = MarketService()
