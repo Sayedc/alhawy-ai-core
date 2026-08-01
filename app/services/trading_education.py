@@ -169,15 +169,15 @@ class TradingEducation:
         }
     }
     
-    def get_level(self, level_name: str) -> Dict:
+    def get_level(self, level_name: str):
         """جلب مستوى معين من المنهج"""
         return self.LEVELS.get(level_name, None)
     
-    def get_all_levels(self) -> List[str]:
+    def get_all_levels(self):
         """جلب جميع المستويات"""
         return list(self.LEVELS.keys())
     
-    def get_next_level(self, current_level: str) -> Optional[str]:
+    def get_next_level(self, current_level: str):
         """جلب المستوى التالي"""
         levels = self.get_all_levels()
         try:
@@ -188,4 +188,6 @@ class TradingEducation:
             pass
         return None
 
+
+# إنشاء كائن واحد للاستخدام
 trading_education = TradingEducation()
