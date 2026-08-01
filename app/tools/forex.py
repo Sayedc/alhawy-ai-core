@@ -32,7 +32,15 @@ class ForexTool(Tool):
     @classmethod
     def can_handle(cls, query: str) -> bool:
         text = query.lower()
-        return any(key in text for key in cls.SYMBOLS)
+
+        print("FOREX QUERY:", text)
+
+        for key in cls.SYMBOLS:
+            if key in text:
+                print("FOUND:", key)
+                return True
+
+        return False
 
     async def run(self, query: str, **kwargs) -> str:
         text = query.lower()
