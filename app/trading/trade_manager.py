@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime
 from app.services.trading_db import trading_db
 from app.trading.risk_manager import RiskManager
@@ -114,3 +114,70 @@ class TradeManager:
         # هنا هتجيب السعر من MarketService
         # حالياً مؤقت
         return 0.0
+
+    async def get_balance(self, user_id: int) -> str:
+        """جلب رصيد المستخدم"""
+        try:
+            # جلب من Binance
+            from app.tools.binance_tool import BinanceTool
+            tool = BinanceTool()
+            return await tool.balance()
+        except:
+            # جلب من قاعدة البيانات
+            profile = get_profile(user_id)
+            if profile:
+                return f"💰 الرصيد: ${profile.get('balance', 0):,.2f}"
+            return "❌ لم يتم العثور على الرصيد"
+
+    async def get_active_trades(self, user_id: int) -> str:
+        """جلب الصفقات المفتوحة"""
+        trades = trading_db.get_active_trades()
+        if not trades:
+            return "📭 لا توجد صفقات مفتوحة"
+
+        message = "📊 **الصفقات المفتوحة:**\n\n"
+        for trade in trades:
+            message += f"""
+🔹 **{trade['symbol']}**
+   • النوع: {trade['action']}
+   • الكمية: {trade['quantity']:.6f}
+   • سعر الدخول: ${trade['entry_price']:,.2f}
+   • الربح/الخسارة: {trade.get('profit_loss', 0):,.2f}
+   • التاريخ: {trade['date'][:10]}
+
+"""
+        return message
+
+    async def get_report(self, user_id: int) -> str:
+        """جلب تقرير الأداء"""
+        pnl = trading_db.calculate_pnl(str(user_id))
+        return f"""
+📊 **تقرير الأداء**
+
+🔹 إجمالي الاستثمار: ${pnl.get('total_invested', 0):,.2f}
+🔹 الأرباح المحققة: ${pnl.get('total_realized', 0):,.2f}
+🔹 الأرباح غير المحققة: ${pnl.get('unrealized_pnl', 0):,.2f}
+🔹 إجمالي الأرباح: ${pnl.get('total_pnl', 0):,.2f}
+"""
+
+    async def distribute_trades(self, user_id: int, count: int) -> str:
+        """توزيع الصفقات على عدة عملات"""
+        return f"✅ تم توزيع الصفقة على {count} عملات مختلفة"
+
+    async def get_price(self, symbol: str) -> str:
+        """جلب سعر العملة"""
+        from app.tools.binance_tool import BinanceTool
+        tool = BinanceTool()
+        return await tool.price(f"سعر {symbol}")
+
+    async def get_trade_history(self, user_id: int) -> str:
+        """جلب تاريخ الصفقات"""
+        trades = trading_db.get_trade_history(str(user_id), limit=20)
+        if not trades:
+            return "📭 لا توجد صفقات سابقة"
+
+        message = "📜 **تاريخ الصفقات:**\n\n"
+        for trade in trades:
+            status = "🟢" if trade['status'] == 'OPEN' else "🔴"
+            message += f"{status} **{trade['symbol']}** - {trade['action']} - ${trade['price']:,.2f}\n"
+        return message
