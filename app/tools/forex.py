@@ -33,18 +33,13 @@ class ForexTool(Tool):
     def can_handle(cls, query: str) -> bool:
         text = query.lower()
 
-        print("FOREX QUERY:", text)
-
         for key in cls.SYMBOLS:
             if key in text:
-                print("FOUND:", key)
                 return True
 
         return False
 
     async def run(self, query: str, **kwargs) -> str:
-        raise Exception("FOREX TOOL STARTED")
-
         text = query.lower()
 
         found = []
@@ -53,10 +48,8 @@ class ForexTool(Tool):
             if key in text and value not in found:
                 found.append(value)
 
-        print("FOUND:", found)
-
         if not found:
-            return "لم أتعرف على أي عملة"
+            return None
 
         if len(found) == 1:
             base = found[0]
@@ -65,11 +58,8 @@ class ForexTool(Tool):
             base = found[0]
             target = found[1]
 
-        print(base, target)
-
         try:
             async with httpx.AsyncClient(timeout=20) as client:
-
                 response = await client.get(
                     "https://api.frankfurter.app/latest",
                     params={
@@ -80,21 +70,19 @@ class ForexTool(Tool):
 
                 response.raise_for_status()
 
-                print(response.text)
-
         except httpx.HTTPError:
-            return None
+            return "❌ تعذر الحصول على سعر الصرف حالياً."
 
         data = response.json()
 
         rates = data.get("rates", {})
 
         if target not in rates:
-            return None
+            return "❌ لم يتم العثور على سعر العملة."
 
         rate = rates[target]
 
         return (
             f"💱 {base}/{target}\n\n"
             f"1 {base} = {rate:,.4f} {target}"
-            )
+        )
