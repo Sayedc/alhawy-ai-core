@@ -43,7 +43,7 @@ class ForexTool(Tool):
         return False
 
     async def run(self, query: str, **kwargs) -> str:
-        print("FOREX RUN:", query)
+        raise Exception("FOREX TOOL STARTED")
 
         text = query.lower()
 
@@ -97,4 +97,4 @@ class ForexTool(Tool):
         return (
             f"💱 {base}/{target}\n\n"
             f"1 {base} = {rate:,.4f} {target}"
-            )
+                )
