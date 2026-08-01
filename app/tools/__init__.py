@@ -7,6 +7,8 @@ from app.tools.news import NewsTool
 from app.tools.stocks import StocksTool
 from app.tools.trading_tool import TradingTool
 from app.tools.advanced_trading_tool import AdvancedTradingTool
+from app.tools.binance_tool import BinanceTool
+from app.tools.recommendation_tool import RecommendationTool
 
 from app.tools.registry import registry
 
@@ -21,6 +23,8 @@ def load_tools():
     registry.register(NewsTool())
     registry.register(StocksTool())
     registry.register(TradingTool())
-    registry.register(AdvancedTradingTool())  # أداة التداول المتقدمة
+    registry.register(AdvancedTradingTool())
+    registry.register(BinanceTool())
+    registry.register(RecommendationTool())
 
     return registry
