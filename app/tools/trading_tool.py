@@ -1,18 +1,19 @@
-# app/tools/trading_tool.py
+# app/tools/trading_tool.py (الكود الكامل)
+
 from app.tools.base import Tool
 from app.services.trading_db import trading_db
 from app.services.market_service import market_service
-from datetime import datetime
+import re
 
 class TradingTool(Tool):
     """
-    أداة التداول وإدارة الصفقات
+    أداة التداول - تنفيذ صفقات حقيقية
     """
     
     def __init__(self):
         super().__init__(
             name="trading",
-            description="إدارة الصفقات والتداول",
+            description="تنفيذ صفقات التداول وإدارة المحفظة",
             category="Trading",
             version="1.0",
             priority=10,
@@ -23,119 +24,160 @@ class TradingTool(Tool):
         text = query.lower()
         keywords = [
             "شراء", "بيع", "صفقة", "تداول", "محفظة", "ربح", "خسارة",
-            "اشتر", "بع", "دخول", "خروج", "توصية", "تحليل",
-            "buy", "sell", "trade", "portfolio", "profit", "loss"
+            "اشتر", "بع", "دخول", "خروج", "buy", "sell", "trade"
         ]
         return any(k in text for k in keywords)
     
     async def run(self, query: str, **kwargs) -> str:
         text = query.lower()
-        user_id = kwargs.get("user_id", "unknown")
+        user_id = kwargs.get("user_id", "default_user")
         
         # عرض المحفظة
         if "محفظة" in text or "portfolio" in text:
-            return await self._show_portfolio()
+            return await self._show_portfolio(user_id)
         
-        # عرض الصفقات المفتوحة
-        if "صفقات مفتوحة" in text or "open trades" in text:
-            return await self._show_open_trades()
+        # عرض الصفقات
+        if "صفقات" in text or "trades" in text:
+            return await self._show_trades(user_id)
         
-        # عرض الصفقات المغلقة
-        if "صفقات مغلقة" in text or "closed trades" in text:
-            return await self._show_closed_trades()
+        # عرض الأرباح
+        if "ربح" in text or "خسارة" in text or "pnl" in text:
+            return await self._show_pnl(user_id)
         
-        # عرض التوصيات النشطة
-        if "توصيات" in text or "recommendations" in text:
-            return await self._show_recommendations()
-        
-        # إضافة صفقة شراء
+        # شراء
         if "شراء" in text or "buy" in text:
-            return await self._add_buy_trade(text, user_id)
+            return await self._execute_buy(text, user_id)
         
-        # إضافة صفقة بيع
+        # بيع
         if "بيع" in text or "sell" in text:
-            return await self._add_sell_trade(text, user_id)
+            return await self._execute_sell(text, user_id)
         
-        # عرض الأرباح/الخسائر
-        if "ربح" in text or "خسارة" in text or "profit" in text or "loss" in text:
-            return await self._show_profit_loss()
-        
-        # متابعة المستخدم
-        if "متابعة" in text or "follow" in text:
-            return await self._follow_user(user_id)
-        
-        return "📊 الأوامر المتاحة:\n\n" \
-               "• عرض المحفظة\n" \
-               "• عرض الصفقات المفتوحة\n" \
-               "• عرض الصفقات المغلقة\n" \
-               "• عرض التوصيات\n" \
-               "• شراء [السهم] [الكمية] @ [السعر]\n" \
-               "• بيع [السهم] [الكمية] @ [السعر]\n" \
-               "• عرض الربح/الخسارة\n" \
-               "• متابعة"
+        return await self._show_help()
     
-    async def _show_portfolio(self) -> str:
+    async def _execute_buy(self, text: str, user_id: str) -> str:
+        """تنفيذ أمر شراء"""
+        # تحليل النص: "شراء AAPL 100 @ 150"
+        pattern = r"شراء\s+(\w+)\s+(\d+)\s*@?\s*([\d.]+)"
+        match = re.search(pattern, text)
+        
+        if not match:
+            return "❌ الصيغة الصحيحة: شراء [السهم] [الكمية] @ [السعر]\nمثال: شراء AAPL 100 @ 150"
+        
+        symbol = match.group(1).upper()
+        quantity = int(match.group(2))
+        price = float(match.group(3))
+        
+        # التحقق من السعر الحقيقي (اختياري)
+        real_price = await market_service.get_stock_price(symbol)
+        if real_price:
+            current_price = real_price['price']
+            # تحذير إذا كان السعر مختلف
+            if abs(current_price - price) / current_price > 0.05:  # فرق 5%
+                return f"⚠️ السعر الحقيقي لـ {symbol} هو ${current_price:,.2f}\n" \
+                       f"هل أنت متأكد من السعر ${price:,.2f}؟"
+        
+        # تنفيذ الصفقة
+        result = trading_db.execute_buy_order(symbol, quantity, price, user_id)
+        
+        if "error" in result:
+            return f"❌ {result['error']}"
+        
+        return f"✅ **تم تنفيذ صفقة شراء**\n\n" \
+               f"• السهم: {symbol}\n" \
+               f"• الكمية: {quantity}\n" \
+               f"• السعر: ${price:,.2f}\n" \
+               f"• الإجمالي: ${quantity * price:,.2f}\n" \
+               f"• رقم الصفقة: #{result['trade_id']}"
+    
+    async def _execute_sell(self, text: str, user_id: str) -> str:
+        """تنفيذ أمر بيع"""
+        pattern = r"بيع\s+(\w+)\s+(\d+)\s*@?\s*([\d.]+)"
+        match = re.search(pattern, text)
+        
+        if not match:
+            return "❌ الصيغة الصحيحة: بيع [السهم] [الكمية] @ [السعر]\nمثال: بيع AAPL 100 @ 155"
+        
+        symbol = match.group(1).upper()
+        quantity = int(match.group(2))
+        price = float(match.group(3))
+        
+        result = trading_db.execute_sell_order(symbol, quantity, price, user_id)
+        
+        if "error" in result:
+            return f"❌ {result['error']}"
+        
+        return f"✅ **تم تنفيذ صفقة بيع**\n\n" \
+               f"• السهم: {symbol}\n" \
+               f"• الكمية: {quantity}\n" \
+               f"• السعر: ${price:,.2f}\n" \
+               f"• الإجمالي: ${quantity * price:,.2f}\n" \
+               f"• رقم الصفقة: #{result['trade_id']}"
+    
+    async def _show_portfolio(self, user_id: str) -> str:
         """عرض المحفظة"""
         portfolio = trading_db.get_portfolio()
-        summary = trading_db.get_portfolio_summary()
         
         if not portfolio:
-            return "📊 المحفظة فارغة حالياً"
+            return "📊 المحفظة فارغة"
         
-        # جلب الأسعار الحالية
-        total = 0
         response = "📊 **المحفظة الحالية**\n\n"
+        total_value = 0
         
         for item in portfolio:
             # جلب السعر الحالي
-            price_data = await market_service.get_stock_price(item['symbol'])
-            current_price = price_data['price'] if price_data else item['avg_price']
+            stock = await market_service.get_stock_price(item['symbol'])
+            current_price = stock['price'] if stock else item['avg_price']
             
             value = current_price * item['quantity']
-            total += value
+            total_value += value
             
-            response += f"• **{item['symbol'].upper()}**\n"
-            response += f"  الكمية: {item['quantity']}\n"
-            response += f"  متوسط السعر: ${item['avg_price']:,.2f}\n"
-            response += f"  السعر الحالي: ${current_price:,.2f}\n"
-            response += f"  القيمة: ${value:,.2f}\n\n"
-        
-        response += f"💰 **إجمالي المحفظة: ${total:,.2f}**"
-        
-        return response
-    
-    async def _show_open_trades(self) -> str:
-        """عرض الصفقات المفتوحة"""
-        trades = trading_db.get_active_trades()
-        
-        if not trades:
-            return "📋 لا توجد صفقات مفتوحة"
-        
-        response = "📋 **الصفقات المفتوحة**\n\n"
-        for trade in trades:
-            entry = trade['entry_price']
-            current = await self._get_current_price(trade['symbol'])
-            profit_loss = (current - entry) * trade['quantity'] if trade['action'] == 'BUY' else (entry - current) * trade['quantity']
+            profit_loss = (current_price - item['avg_price']) * item['quantity']
             emoji = "📈" if profit_loss >= 0 else "📉"
             
-            response += f"• {trade['symbol'].upper()} ({trade['action']})\n"
-            response += f"  الدخول: ${entry:,.2f}\n"
-            response += f"  الكمية: {trade['quantity']}\n"
-            response += f"  {emoji} الربح/الخسارة: ${profit_loss:,.2f}\n\n"
+            response += f"• **{item['symbol']}**\n"
+            response += f"  الكمية: {item['quantity']}\n"
+            response += f"  السعر الحالي: ${current_price:,.2f}\n"
+            response += f"  القيمة: ${value:,.2f}\n"
+            response += f"  {emoji} ربح/خسارة: ${profit_loss:,.2f}\n\n"
+        
+        response += f"💰 **إجمالي المحفظة: ${total_value:,.2f}**"
         
         return response
     
-    async def _add_buy_trade(self, text: str, user_id: str) -> str:
-        """إضافة صفقة شراء"""
-        # تحليل النص: "شراء AAPL 10 @ 150"
-        parts = text.split()
-        if len(parts) < 4:
-            return "❌ الصيغة الصحيحة: شراء [السهم] [الكمية] @ [السعر]"
+    async def _show_trades(self, user_id: str) -> str:
+        """عرض الصفقات"""
+        trades = trading_db.get_trade_history(user_id, limit=10)
         
-        # هذه مجرد بداية - تحتاج تحليل أكثر دقة
-        return "✅ تم إضافة صفقة الشراء"
+        if not trades:
+            return "📋 لا توجد صفقات"
+        
+        response = "📋 **آخر الصفقات**\n\n"
+        for trade in trades[:10]:
+            action_emoji = "🟢" if trade['action'] == 'BUY' else "🔴"
+            response += f"{action_emoji} **{trade['action']}** {trade['symbol']}\n"
+            response += f"  الكمية: {trade['quantity']} @ ${trade['price']:,.2f}\n"
+            response += f"  الإجمالي: ${trade['total']:,.2f}\n"
+            response += f"  الحالة: {trade['status']}\n\n"
+        
+        return response
     
-    async def _follow_user(self, user_id: str) -> str:
-        """متابعة المستخدم"""
-        trading_db.add_follower(user_id, f"user_{user_id[:8]}")
-        return "✅ تمت المتابعة! ستتلقى التحديثات والتوصيات."
+    async def _show_pnl(self, user_id: str) -> str:
+        """عرض الأرباح والخسائر"""
+        pnl = trading_db.calculate_pnl(user_id)
+        
+        return f"📊 **ملخص الأرباح والخسائر**\n\n" \
+               f"💰 إجمالي المستثمر: ${pnl['total_invested']:,.2f}\n" \
+               f"💰 الأرباح المحققة: ${pnl['realized_pnl']:,.2f}\n" \
+               f"📈 الأرباح غير المحققة: ${pnl['unrealized_pnl']:,.2f}\n" \
+               f"💵 إجمالي الأرباح: ${pnl['total_pnl']:,.2f}"
+    
+    async def _show_help(self) -> str:
+        """عرض المساعدة"""
+        return "📊 **أوامر التداول المتاحة**\n\n" \
+               "• **شراء [السهم] [الكمية] @ [السعر]**\n" \
+               "  مثال: شراء AAPL 100 @ 150\n\n" \
+               "• **بيع [السهم] [الكمية] @ [السعر]**\n" \
+               "  مثال: بيع AAPL 100 @ 155\n\n" \
+               "• **عرض المحفظة** - عرض أسهمك\n" \
+               "• **عرض الصفقات** - عرض تاريخ الصفقات\n" \
+               "• **عرض الربح/الخسارة** - عرض الأرباح"
