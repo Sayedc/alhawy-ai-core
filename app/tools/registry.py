@@ -49,6 +49,16 @@ class ToolRegistry:
         """
         البحث عن أفضل أداة لمعالجة الرسالة.
         """
+        
+        print(f"Query: {query}")
+
+        for tool in self.enabled_tools():
+            try:
+                result = tool.can_handle(query)
+                print(f"{tool.name}: {result}")
+            except Exception as e:
+                print(f"{tool.name}: ERROR {e}")
+
         candidates = [
             tool
             for tool in self.enabled_tools()
@@ -56,9 +66,12 @@ class ToolRegistry:
         ]
 
         if not candidates:
+            print("No candidates")
             return None
 
         candidates.sort(key=lambda t: t.priority)
+
+        print("Selected:", candidates[0].name)
 
         return candidates[0]
 
